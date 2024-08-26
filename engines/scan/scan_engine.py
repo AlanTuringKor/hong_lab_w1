@@ -1,10 +1,14 @@
 from flask import Flask, request, jsonify
+import pika
 import hashlib
 import os
-import requests
 import threading
 
 app = Flask(__name__)
+
+# RabbitMQ configuration
+RABBITMQ_HOST = 'localhost'
+QUEUE_NAME = 'scan_queue'
 
 # Mock database for storing scan results
 scan_results = {}
@@ -14,12 +18,6 @@ signature_db = {
     "malware1": "hash_of_malware1",
     "malware2": "hash_of_malware2"
 }
-
-# Mock heuristic rules
-heuristic_rules = [
-    {"pattern": "suspicious_pattern1", "score": 50},
-    {"pattern": "suspicious_pattern2", "score": 30}
-]
 
 # Helper function to calculate file hash
 def calculate_file_hash(file_path):
@@ -47,10 +45,41 @@ def heuristic_analysis(file_path):
     return {"result": "No suspicious pattern detected"}
 
 # Behavioral analysis (pseudo method)
-def behavioral_analysis(process_id):
+def behavioral_analysis(scan_id):
     # Simulate behavioral analysis
     # In a real scenario, this would involve monitoring the process behavior
-    return {"result": "Behavioral analysis completed", "process_id": process_id}
+    scan_results[scan_id]["behavioral_result"] = {"result": "Behavioral analysis completed", "scan_id": scan_id}
+
+# Function to publish scan task to RabbitMQ
+def publish_scan_task(scan_id, file_path):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_NAME)
+    channel.basic_publish(exchange='', routing_key=QUEUE_NAME, body=f"{scan_id}|{file_path}")
+    connection.close()
+
+# Function to consume scan tasks from RabbitMQ
+def consume_scan_tasks():
+    def callback(ch, method, properties, body):
+        scan_id, file_path = body.decode().split('|')
+        signature_result = signature_based_detection(file_path)
+        heuristic_result = heuristic_analysis(file_path)
+        scan_results[scan_id].update({
+            "file_path": file_path,
+            "signature_result": signature_result,
+            "heuristic_result": heuristic_result
+        })
+        threading.Thread(target=lambda: behavioral_analysis(scan_id)).start()
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_NAME)
+    channel.basic_consume(queue=QUEUE_NAME, on_message_callback=callback)
+    channel.start_consuming()
+
+# Start the RabbitMQ consumer in a separate thread
+threading.Thread(target=consume_scan_tasks).start()
 
 # Scan a file
 @app.route('/scan', methods=['POST'])
@@ -59,20 +88,12 @@ def scan_file():
     file_path = os.path.join('/tmp', file.filename)
     file.save(file_path)
 
-    signature_result = signature_based_detection(file_path)
-    heuristic_result = heuristic_analysis(file_path)
-
     scan_id = hashlib.md5(file_path.encode()).hexdigest()
-    scan_results[scan_id] = {
-        "file_path": file_path,
-        "signature_result": signature_result,
-        "heuristic_result": heuristic_result
-    }
+    scan_results[scan_id] = {}
 
-    # Trigger behavioral analysis in a separate thread
-    threading.Thread(target=lambda: behavioral_analysis(scan_id)).start()
+    publish_scan_task(scan_id, file_path)
 
-    return jsonify({"scan_id": scan_id, "results": scan_results[scan_id]})
+    return jsonify({"scan_id": scan_id})
 
 # Get scan results
 @app.route('/scan/results/<scan_id>', methods=['GET'])
