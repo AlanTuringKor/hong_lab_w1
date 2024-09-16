@@ -1,0 +1,102 @@
+# Antivirus Software Configuration
+
+# General settings
+app_name: "ModularAV"
+current_version: "1.0.0"
+virus_db_version: "2023.09.15"
+
+# Paths
+install_dir: "/opt/modular_av"
+virus_db_path: "/var/lib/modular_av/virus_signatures.db"
+quarantine_dir: "/var/lib/modular_av/quarantine"
+report_dir: "/var/lib/modular_av/reports"
+log_dir: "/var/log/modular_av"
+
+# Scanning settings
+scan_settings:
+  default_scan_paths:
+    - "/home"
+    - "/var/www"
+  excluded_paths:
+    - "/proc"
+    - "/sys"
+    - "/dev"
+  file_size_limit: 100000000  # in bytes, files larger than this will be skipped
+  scan_archives: true
+  max_archive_size: 50000000  # in bytes
+  max_scan_depth: 5  # for nested archives
+
+# Real-time monitoring settings
+file_watcher:
+  enabled: true
+  watch_paths:
+    - "/home"
+    - "/var/www"
+  ignore_extensions:
+    - ".tmp"
+    - ".log"
+
+# Quarantine settings
+quarantine:
+  max_size: 1000000000  # in bytes, total size of quarantine folder
+  retention_period: 30  # in days, files older than this will be deleted
+
+# Update settings
+update:
+  update_url: "https://updates.example.com/modular_av"
+  check_interval: 86400  # in seconds, 24 hours
+  auto_update: true
+
+# API settings
+api:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+  allowed_ips:
+    - "127.0.0.1"
+    - "192.168.1.0/24"
+
+# Reporting settings
+reporting:
+  generate_on_scan: true
+  keep_reports_for: 90  # in days
+  email_reports: false
+  email_settings:
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "av_reports@example.com"
+    smtp_password: "password"  # Consider using environment variables for sensitive data
+    recipient: "admin@example.com"
+
+# Logging settings
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  max_size: 10000000  # in bytes
+  backup_count: 5
+
+# Performance settings
+performance:
+  max_cpu_percent: 50
+  max_memory_percent: 70
+  throttle_on_battery: true
+
+# Notification settings
+notifications:
+  desktop_notifications: true
+  send_emails: false
+
+# Advanced settings
+advanced:
+  enable_heuristic_scan: true
+  heuristic_level: 2  # 1-5, higher is more aggressive
+  enable_machine_learning: false
+  ml_model_path: "/opt/modular_av/ml_model.pkl"
+
+# User management
+users:
+  admin:
+    password_hash: "bcrypt_hashed_password_here"
+    role: "admin"
+  user:
+    password_hash: "bcrypt_hashed_password_here"
+    role: "user"
