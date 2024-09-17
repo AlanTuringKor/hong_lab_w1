@@ -5,6 +5,7 @@ from .updater import Updater
 from .api import API
 from .file_watcher import FileWatcher
 from .reporter import Reporter
+from .reporter import Reporter
 
 __all__ = ['Scanner', 'Quarantine', 'ConfigManager', 'Updater', 'API', 'FileWatcher', 'Reporter']
 
