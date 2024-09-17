@@ -18,10 +18,16 @@ class Scanner:
 
     def load_yara_rules(self):
         print("Loading YARA rules...")
-        # In a real scenario, you would load these from files
-        return yara.compile(sources={
-            'quick_check': 'rule quick_check { strings: $a = "suspicious" condition: $a }'
-        })
+        rules = {}
+        rules_dir = "rules"
+        for filename in os.listdir(rules_dir):
+            if filename.endswith(('.yar', '.yara')):
+                rule_path = os.path.join(rules_dir, filename)
+                try:
+                    rules[filename] = yara.compile(rule_path)
+                except Exception as e:
+                    print(f"Error compiling rule {filename}: {str(e)}")
+        return rules
 
     def scan(self, path):
         print(f"\nStarting scan of {path}")
